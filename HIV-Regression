@@ -45,7 +45,7 @@ def ode_list(li,t,gamma,k_val):
     dSdt = (k_val*F2)
     
     return [dDdt, dAdt, dF1dt, dF2dt, dSdt]
-
+#Differentai Equations. Erlang Two-Step Fusion with Density Dependence
 def ode_list_g(li,t,gamma,k_val,alpha):
     D = li[0]
     A = li[1]
@@ -120,7 +120,7 @@ print('chi^2', chi_squared(final_10M[:,1][1:], observed[1:]))
 print('aic', aic(final_10M[:,1]))
 
 
-#####testing bootstrap(oh boy)#####
+#####testing bootstrap#####
 total_values_g = []
 total_values_k = []
 total_values_d = []
