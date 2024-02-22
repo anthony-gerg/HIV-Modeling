@@ -1,1 +1,145 @@
-#
+#This is the code for nonlinear regression for a partciular dosage of cytosine arabinoside on the glycoproteins of HIV Type-1
+import numpy as np
+import scipy
+import random
+import csv
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from scipy.integrate import odeint
+
+file = open('10M AraC.csv')
+type(file)
+csvreader = csv.reader(file)
+header_10M_AraC = []
+header_10M_AraC = next(csvreader)
+rows_10M_AraC = []
+for row in csvreader:
+    rows_10M_AraC.append(row)
+file.close
+
+######### 10M ###########
+#getting data from .csv file, creating an array out of it, ordering that array, and normalizing the array into usable data
+arr_10M = np.array(rows_10M_AraC)
+arr_10M_flt = arr_10M.astype(float)
+arr_sorted_10M = sorted(arr_10M_flt,key = lambda x: x[1])
+arr_10M_new = np.array(arr_sorted_10M)
+tr_arr_10M_new = np.transpose(arr_10M_new)
+sublist1_10M, sublist2_10M = tr_arr_10M_new.tolist()
+key = sublist2_10M[0]
+for i in range(0,21):
+    sublist2_10M[i] = sublist2_10M[i] - key
+sublist2_10M[0] = 0.0
+final_10M = np.array(list(zip(sublist1_10M, sublist2_10M)))
+
+#Differential Equations. Erlang Two-Step Fusion
+def ode_list(li,t,gamma,k_val):
+    D = li[0]
+    A = li[1]
+    F1 = li[2]
+    F2 = li[3]
+    S = li[4]
+    dDdt = (-gamma*D*A)
+    dAdt = (-gamma*D*A) - (gamma*S*A)
+    dF1dt = (2*gamma*D*A)+(gamma*S*A)-(k_val*F1)
+    dF2dt = (k_val*F1)-(k_val*F2)
+    dSdt = (k_val*F2)
+    
+    return [dDdt, dAdt, dF1dt, dF2dt, dSdt]
+
+def ode_list_g(li,t,gamma,k_val,alpha):
+    D = li[0]
+    A = li[1]
+    F1 = li[2]
+    F2 = li[3]
+    S = li[4]
+    new_gamma = (gamma/(1+alpha*S))
+    dDdt = -(new_gamma*D*A)
+    dAdt = -(new_gamma*D*A) - (new_gamma*S*A)
+    dF1dt = (2*new_gamma*D*A)+(new_gamma*S*A)-(k_val*F1)
+    dF2dt = (k_val*F1)-(k_val*F2)
+    dSdt = (k_val*F2)
+    #print(dDdt,dAdt,dF1dt, dF2dt, dSdt)
+    return [dDdt, dAdt, dF1dt, dF2dt, dSdt]
+  
+#Getting SSR values from integration
+def SSR_code_10M(li, dp):
+    t = dp[:, 0]
+    
+    donor_SSR_10M = li[0]
+    gamma_SSR_10M = li[1]
+    k_val_SSR_10M = li[2]
+    alpha_10M = li[3]
+    var = [donor_SSR_10M, 1-donor_SSR_10M, 0, 0, 0]
+    check = dp[:,1]
+    red_gamma = gamma_SSR_10M / (0.01+gamma_SSR_10M)
+    return_values_10M = odeint(ode_list_g, var, t, args = (gamma_SSR_10M, k_val_SSR_10M,alpha_10M)) 
+    y_predicted_val_10M = return_values_10M[:,4]/(return_values_10M[:,0] + return_values_10M[:,1] + return_values_10M[:,2] + return_values_10M[:,3])
+    SSR_10M = sum((y_predicted_val_10M - check)**2)
+    return SSR_10M
+
+#Taking optimize values and getting y values
+def true_y_values(li):
+    donor_y_10M = li.x[0]
+    gamma_y_10M = li.x[1]
+    k_val_y_10M = li.x[2]
+    alpha_y_10M = li.x[3]
+    t_10M = final_10M[:,0]
+    
+    true_vals_10M = odeint(ode_list_g,[donor_y_10M, 1-donor_y_10M, 0, 0, 0], t_10M, args = (gamma_y_10M, k_val_y_10M, alpha_y_10M))
+    y_vals_10M = true_vals_10M[:,4] / (true_vals_10M[:,0] + true_vals_10M[:,1] + true_vals_10M[:,2] + true_vals_10M[:,3])
+    return y_vals_10M
+
+#Chi Squared
+def chi_squared(li_1,li_2):
+    chi = sum((li_1 - li_2)**2/li_1)
+    return chi
+
+#Akaike's Information Criterion
+def aic(li):
+    SSR = opti_10M.fun
+    return len(li)*np.log(SSR/len(li))+2*4
+
+##### MAIN CODE #####
+initial_guess_10M = [0.5, 0.001, 1,11]
+opti_10M = scipy.optimize.minimize(SSR_code_10M, initial_guess_10M,final_10M, method = 'Nelder-Mead',bounds=((0,1),(0,1),(-np.inf,np.inf),(-np.inf,np.inf)), options = {'maxiter':2000})
+print(opti_10M)
+
+
+gamma_10M=opti_10M.x[1]
+k_val_10M = opti_10M.x[2]
+observed = true_y_values(opti_10M)
+
+#Plot
+plt.errorbar(final_10M[:,0], final_10M[:,1])
+plt.plot(final_10M[:,0], observed,color='r')
+plt.xlabel("Time(min)", fontsize=10)
+plt.ylabel("Syncytia Percantage", fontsize=10)
+plt.title("10M", fontsize=10)
+plt.legend(['fitting function','observed data(HXB2)'])
+print('chi^2', chi_squared(final_10M[:,1][1:], observed[1:]))
+print('aic', aic(final_10M[:,1]))
+
+
+#####testing bootstrap(oh boy)#####
+total_values_g = []
+total_values_k = []
+total_values_d = []
+
+
+
+for i in range(999):
+    SSR_data = (observed-final_10M[:,1])
+    random.shuffle(SSR_data)
+    new_observed = SSR_data + observed
+    new_data_p = np.array(list(zip(final_10M[:,0],new_observed)))
+    initial_guess_boot_10M = [ 8.525e-01,  3.189e-03,  6.062e-01,  1.391e+01]
+    opti_10M_boot = scipy.optimize.minimize(SSR_code_10M, initial_guess_boot_10M, new_data_p, method = 'L-BFGS-B',bounds=((0,1),(0,1),(-np.inf,np.inf),(-np.inf,np.inf)), options = {'maxiter':2000})
+    total_values_g.append(opti_10M_boot.x[1])
+    total_values_k.append(opti_10M_boot.x[2])
+    total_values_d.append(opti_10M_boot.x[0])
+gamma_boot = sorted(np.array(total_values_g))
+k_boot = sorted(np.array(total_values_k))
+d_boot = sorted(np.array(total_values_d))
+print(gamma_boot[0:4],gamma_boot[995:])
+print(k_boot[0:4],k_boot[995:])
+print(d_boot[0:4],d_boot[995:])
