@@ -1,7 +1,7 @@
-#This is the code for nonlinear regression for a partciular dosage of cytosine arabinoside on the glycoproteins of HIV Type-1
+#This is the code for nonlinear analysis for a partciular dosage of cytosine arabinoside on the glycoproteins of HIV Type-1
 import numpy as np
 import scipy
-import random
+#import random
 import csv
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
@@ -30,7 +30,7 @@ for i in range(0,21):
     sublist2_10M[i] = sublist2_10M[i] - key
 sublist2_10M[0] = 0.0
 final_10M = np.array(list(zip(sublist1_10M, sublist2_10M)))
-
+####################################################################################################################################################################################################
 #Differential Equations. Erlang Two-Step Fusion
 def ode_list(li,t,gamma,k_val):
     D = li[0]
@@ -45,7 +45,7 @@ def ode_list(li,t,gamma,k_val):
     dSdt = (k_val*F2)
     
     return [dDdt, dAdt, dF1dt, dF2dt, dSdt]
-#Differentai Equations. Erlang Two-Step Fusion with Density Dependence
+
 def ode_list_g(li,t,gamma,k_val,alpha):
     D = li[0]
     A = li[1]
@@ -98,7 +98,7 @@ def chi_squared(li_1,li_2):
 def aic(li):
     SSR = opti_10M.fun
     return len(li)*np.log(SSR/len(li))+2*4
-
+#######################################################################################################################################################################################
 ##### MAIN CODE #####
 initial_guess_10M = [0.5, 0.001, 1,11]
 opti_10M = scipy.optimize.minimize(SSR_code_10M, initial_guess_10M,final_10M, method = 'Nelder-Mead',bounds=((0,1),(0,1),(-np.inf,np.inf),(-np.inf,np.inf)), options = {'maxiter':2000})
@@ -107,6 +107,7 @@ print(opti_10M)
 
 gamma_10M=opti_10M.x[1]
 k_val_10M = opti_10M.x[2]
+alpha_10M = opti_10M.x[3]
 observed = true_y_values(opti_10M)
 
 #Plot
@@ -119,7 +120,7 @@ plt.legend(['fitting function','observed data(HXB2)'])
 print('chi^2', chi_squared(final_10M[:,1][1:], observed[1:]))
 print('aic', aic(final_10M[:,1]))
 
-
+####################################################################################################################################################################################################
 #####testing bootstrap#####
 total_values_g = []
 total_values_k = []
