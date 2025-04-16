@@ -1,11 +1,13 @@
-#This is the code for nonlinear analysis for a partciular dosage of cytosine arabinoside on the glycoproteins of HIV Type-1
 import numpy as np
 import scipy
-#import random
+import random
 import csv
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from scipy.integrate import odeint
+from mpl_toolkits.axes_grid1 import host_subplot
+
+
 
 file = open('10M AraC.csv')
 type(file)
@@ -16,6 +18,8 @@ rows_10M_AraC = []
 for row in csvreader:
     rows_10M_AraC.append(row)
 file.close
+
+
 
 ######### 10M ###########
 #getting data from .csv file, creating an array out of it, ordering that array, and normalizing the array into usable data
@@ -30,7 +34,7 @@ for i in range(0,21):
     sublist2_10M[i] = sublist2_10M[i] - key
 sublist2_10M[0] = 0.0
 final_10M = np.array(list(zip(sublist1_10M, sublist2_10M)))
-####################################################################################################################################################################################################
+
 #Differential Equations. Erlang Two-Step Fusion
 def ode_list(li,t,gamma,k_val):
     D = li[0]
@@ -73,7 +77,7 @@ def SSR_code_10M(li, dp):
     check = dp[:,1]
     red_gamma = gamma_SSR_10M / (0.01+gamma_SSR_10M)
     return_values_10M = odeint(ode_list_g, var, t, args = (gamma_SSR_10M, k_val_SSR_10M,alpha_10M)) 
-    y_predicted_val_10M = return_values_10M[:,4]/(return_values_10M[:,0] + return_values_10M[:,1] + return_values_10M[:,2] + return_values_10M[:,3])
+    y_predicted_val_10M = return_values_10M[:,4]/return_values_10M[:,0]
     SSR_10M = sum((y_predicted_val_10M - check)**2)
     return SSR_10M
 
@@ -86,7 +90,7 @@ def true_y_values(li):
     t_10M = final_10M[:,0]
     
     true_vals_10M = odeint(ode_list_g,[donor_y_10M, 1-donor_y_10M, 0, 0, 0], t_10M, args = (gamma_y_10M, k_val_y_10M, alpha_y_10M))
-    y_vals_10M = true_vals_10M[:,4] / (true_vals_10M[:,0] + true_vals_10M[:,1] + true_vals_10M[:,2] + true_vals_10M[:,3])
+    y_vals_10M = true_vals_10M[:,4] / true_vals_10M[:,0]
     return y_vals_10M
 
 #Chi Squared
@@ -95,52 +99,29 @@ def chi_squared(li_1,li_2):
     return chi
 
 #Akaike's Information Criterion
-def aic(li):
+def aic_10M(li):
     SSR = opti_10M.fun
     return len(li)*np.log(SSR/len(li))+2*4
-#######################################################################################################################################################################################
+
 ##### MAIN CODE #####
-initial_guess_10M = [0.5, 0.001, 1,11]
+initial_guess_10M = [ 1.199e-01,  7.842e-04,  2.913e-01,  1.042e+02]
 opti_10M = scipy.optimize.minimize(SSR_code_10M, initial_guess_10M,final_10M, method = 'Nelder-Mead',bounds=((0,1),(0,1),(-np.inf,np.inf),(-np.inf,np.inf)), options = {'maxiter':2000})
 print(opti_10M)
-
 
 gamma_10M=opti_10M.x[1]
 k_val_10M = opti_10M.x[2]
 alpha_10M = opti_10M.x[3]
-observed = true_y_values(opti_10M)
+observed_10M = true_y_values(opti_10M)
 
 #Plot
-plt.errorbar(final_10M[:,0], final_10M[:,1])
-plt.plot(final_10M[:,0], observed,color='r')
-plt.xlabel("Time(min)", fontsize=10)
-plt.ylabel("Syncytia Percantage", fontsize=10)
-plt.title("10M", fontsize=10)
-plt.legend(['fitting function','observed data(HXB2)'])
-print('chi^2', chi_squared(final_10M[:,1][1:], observed[1:]))
-print('aic', aic(final_10M[:,1]))
-
-####################################################################################################################################################################################################
-#####testing bootstrap#####
-total_values_g = []
-total_values_k = []
-total_values_d = []
-
-
-
-for i in range(999):
-    SSR_data = (observed-final_10M[:,1])
-    random.shuffle(SSR_data)
-    new_observed = SSR_data + observed
-    new_data_p = np.array(list(zip(final_10M[:,0],new_observed)))
-    initial_guess_boot_10M = [ 8.525e-01,  3.189e-03,  6.062e-01,  1.391e+01]
-    opti_10M_boot = scipy.optimize.minimize(SSR_code_10M, initial_guess_boot_10M, new_data_p, method = 'L-BFGS-B',bounds=((0,1),(0,1),(-np.inf,np.inf),(-np.inf,np.inf)), options = {'maxiter':2000})
-    total_values_g.append(opti_10M_boot.x[1])
-    total_values_k.append(opti_10M_boot.x[2])
-    total_values_d.append(opti_10M_boot.x[0])
-gamma_boot = sorted(np.array(total_values_g))
-k_boot = sorted(np.array(total_values_k))
-d_boot = sorted(np.array(total_values_d))
-print(gamma_boot[0:4],gamma_boot[995:])
-print(k_boot[0:4],k_boot[995:])
-print(d_boot[0:4],d_boot[995:])
+fig,axs = plt.subplots()
+axs.scatter(final_10M[:,0], final_10M[:,1],s=100)
+axs.plot(final_10M[:,0], observed_10M,color='r',linewidth=2.0)
+axs.plot(final_10M[:,0], observed_10M_ind,color='k',linewidth=2.0)
+axs.set_xlabel("Time(min)", fontsize=20)
+axs.set_ylabel("Syncytia Percentage", fontsize=20)
+axs.set_title("10M", fontsize=20)
+axs.tick_params(width=2,labelsize='x-large')
+axs.legend(['observed data','fitting data(density)','fitting data(basic)'],loc=4,fontsize='x-large')
+axs.text(0.0,0.095,f'AIC (D.D): {"{:.2f}".format(aic_10M(final_10M[:,1]))}\nAIC (B): {"{:.2f}".format(-218.57465975787758)} \nSSR (D.D): {"{:.5f}".format(opti_10M.fun)} \nSSR (B): {"{:.5f}".format(opti_10M_ind.fun)}',fontsize='x-large')
+plt.savefig('/home/anthonygerg/Plots/Plot_10M.pdf', bbox_inches='tight')
