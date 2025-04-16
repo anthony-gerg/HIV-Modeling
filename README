@@ -1,0 +1,3 @@
+The contents on this folder are as follow:
+
+HIV-Regression: This file is highlighting one of the blocks of code used to regress our models. In particular, the model being used here is a density-dependent viral cell-cell fusion model. There is also a noraml mode from which the previously mentioned model is derived from. The file includes things like SSR, AIC, and our curve-fitting methodology. 
